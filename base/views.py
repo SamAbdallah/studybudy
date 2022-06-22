@@ -1,23 +1,28 @@
 from django.shortcuts import redirect, render
 from django.http import HttpResponse
-from .models import Room
+from .models import Room,topic
 from .forms import RoomForm
-
-
-# rooms = [
-  
-# {'id': 1, 'name':'let us learn python!'},
-# {'id': 2, 'name':'let us learn HTML!'},
-# {'id': 3, 'name':'let us learn JavaScript!'},
-
-# ]
-
+from django.db.models import Q
 
 
 def home(request):
-    rooms=Room.objects.all()
+    q=request.GET.get('q') if request.GET.get('q') != None else ''
+    rooms=Room.objects.filter(
 
-    return render(request,'base/home.html',{'rooms':rooms})
+
+        Q(topic__name__icontains=q) |
+        Q(name__icontains=q) |
+        Q(description__icontains=q)
+        
+        
+        )
+    topicss=topic.objects.all()
+
+    room_count=rooms.count()
+
+    context={'rooms':rooms,'topicss':topicss,'room_count':room_count}
+
+    return render(request,'base/home.html',context)
 
 def room(request,pk):
     room=Room.objects.get(id=pk)
