@@ -73,13 +73,15 @@ def home(request):
     topicss=topic.objects.all()
 
     room_count=rooms.count()
+    room_messages=Message.objects.filter(Q(room__topic__name__icontains=q))
 
-    context={'rooms':rooms,'topicss':topicss,'room_count':room_count}
+    context={'rooms':rooms,'topicss':topicss,'room_count':room_count,'room_messages':room_messages}
 
     return render(request,'base/home.html',context)
 
 def room(request,pk):
     room=Room.objects.get(id=pk)
+    participants=room.participants.all()
     room_messages=room.message_set.all().order_by('-created')
     if request.method== 'POST' :
      message=Message.objects.create(
@@ -92,7 +94,7 @@ def room(request,pk):
 
      return redirect ('room',pk=room.id)
 
-    context={'room':room,'room_messages':room_messages}        
+    context={'room':room,'room_messages':room_messages,'participants':participants}        
 
     return render(request,'base/room.html',context)  
 
@@ -102,13 +104,21 @@ def createroom(request):
     if request.method== 'POST':
      form= RoomForm(request.POST)
      if form.is_valid():
-        form.save()
+        room=form.save(commit=False)
+        room.host=request.user
+        room.save()
         return redirect('home')   
 
     context={'form':form}
     return render(request,'base/room_form.html',context)     
 
-
+def userProfile(request,pk):
+    user=User.objects.get(id=pk)
+    rooms=user.room_set.all()
+    room_messages= user.message_set.all()
+    topicss=topic.objects.all()
+    context={'user':user,'rooms':rooms,'room_messages':room_messages,'topicss':topicss}
+    return render(request,'base/profile.html',context)
 
 
 def updateroom(request,pk):
@@ -139,5 +149,19 @@ def deleteroom(request,pk):
 
 
     return render(request,'base/delete.html',{'obj':room})
+
+
+
+@login_required(login_url='login')
+def deletemessage(request,pk):
+    message=Message.objects.get(id=pk)
+    if request.user != message.user:
+     return HttpResponse("You are not allowed here!")
+    if request.method== 'POST':
+        message.delete()
+        return redirect('home')
+
+
+    return render(request,'base/delete.html',{'obj':message})    
 
 # Create your views here.
